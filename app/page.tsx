@@ -1,7 +1,39 @@
 "use client"
 
+import { useState } from "react"
+import { Copy, Check } from "lucide-react"
+
 import { JsonView } from "@/components/ui/json-view"
 import { Button } from "@/components/ui/button"
+
+const installCommand = "npx shadcn@latest add json-view"
+
+function CopyInput() {
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    navigator.clipboard.writeText(installCommand).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <div className="flex items-center gap-0 rounded-lg border bg-muted/30">
+      <code className="flex-1 truncate px-3 py-2 text-sm">
+        {installCommand}
+      </code>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="shrink-0 rounded-l-none border-l"
+        onClick={handleCopy}
+      >
+        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+      </Button>
+    </div>
+  )
+}
 
 const sampleData = {
   name: "John Doe",
@@ -71,13 +103,26 @@ export default function Page() {
       </header>
 
       <main className="w-full max-w-2xl space-y-4 px-6 py-6 md:px-12 md:py-12">
-        <div>
-          <h2 className="text-lg font-semibold">JSON Viewer</h2>
-          <p className="text-sm text-muted-foreground">
-            Collapsible, syntax-highlighted JSON with copy on hover.
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tighter md:text-5xl">
+            JSON Viewer
+          </h1>
+          <p className="tracking-normal text-muted-foreground">
+            A fully-customizable, collapsible, syntax-highlighted JSON tree
+            viewer component.
+            <span className="text-foreground">
+              {" "}
+              Ready to be copy-pasted into your project.
+            </span>
           </p>
         </div>
-        <JsonView data={sampleData} defaultExpanded={false} />
+
+        <div>
+          <CopyInput />
+        </div>
+        <div className="overflow-auto rounded-sm border bg-muted/30 p-4">
+          <JsonView data={sampleData} />
+        </div>
         <div className="font-mono text-xs text-muted-foreground">
           (Press <kbd>d</kbd> to toggle dark mode)
         </div>

@@ -17,11 +17,32 @@ type JsonValueType = JsonPrimitive | JsonObjectType | JsonArrayType
 type JsonObjectType = { [key: string]: JsonValueType }
 type JsonArrayType = JsonValueType[]
 
+interface JsonViewTheme {
+  key?: string
+  string?: string
+  number?: string
+  boolean?: string
+  null?: string
+  bracket?: string
+  lineHover?: string
+}
+
+const defaultTheme: Required<JsonViewTheme> = {
+  key: "text-blue-700 dark:text-blue-400",
+  string: "text-green-700 dark:text-green-400",
+  number: "text-orange-700 dark:text-amber-400",
+  boolean: "text-purple-700 dark:text-purple-400",
+  null: "text-gray-500 dark:text-gray-400 italic",
+  bracket: "text-gray-700 dark:text-gray-300",
+  lineHover: "hover:bg-muted/50",
+}
+
 interface JsonViewProps {
   data: unknown
   className?: string
   defaultExpanded?: boolean
   indentGuide?: boolean
+  theme?: JsonViewTheme
 }
 
 function isObject(value: unknown): value is JsonObjectType {
@@ -80,15 +101,21 @@ function JsonLine({
   value,
   children,
   className,
+  theme,
 }: {
   depth: number
   value: unknown
   children: React.ReactNode
   className?: string
+  theme: Required<JsonViewTheme>
 }) {
   return (
     <div
-      className={cn("group/line flex items-center gap-1 leading-6", className)}
+      className={cn(
+        "group/line flex items-center gap-1 rounded-sm rounded-l-none leading-6",
+        theme.lineHover,
+        className
+      )}
       style={{ paddingLeft: depth * 24 }}
     >
       <span className="min-w-0">{children}</span>
@@ -97,51 +124,56 @@ function JsonLine({
   )
 }
 
-function Bracket({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="font-semibold text-gray-700 dark:text-gray-300">
-      {children}
-    </span>
-  )
+function Bracket({
+  children,
+  theme,
+}: {
+  children: React.ReactNode
+  theme: Required<JsonViewTheme>
+}) {
+  return <span className={cn("font-semibold", theme.bracket)}>{children}</span>
 }
 
-function Comma() {
-  return <span className="text-gray-700 dark:text-gray-300">,</span>
+function Comma({ theme }: { theme: Required<JsonViewTheme> }) {
+  return <span className={theme.bracket}>,</span>
 }
 
-function KeyLabel({ name }: { name: string }) {
+function KeyLabel({
+  name,
+  theme,
+}: {
+  name: string
+  theme: Required<JsonViewTheme>
+}) {
   return (
-    <span className="text-blue-700 dark:text-blue-400">
+    <span className={theme.key}>
       &quot;{name}&quot;
-      <span className="text-gray-700 dark:text-gray-300">: </span>
+      <span className={theme.bracket}>: </span>
     </span>
   )
 }
 
-function JsonPrimitiveValue({ value }: { value: JsonPrimitive }) {
+function JsonPrimitiveValue({
+  value,
+  theme,
+}: {
+  value: JsonPrimitive
+  theme: Required<JsonViewTheme>
+}) {
   if (value === null) {
-    return <span className="text-gray-500 italic dark:text-gray-400">null</span>
+    return <span className={theme.null}>null</span>
   }
 
   if (typeof value === "boolean") {
-    return (
-      <span className="text-purple-700 dark:text-purple-400">
-        {String(value)}
-      </span>
-    )
+    return <span className={theme.boolean}>{String(value)}</span>
   }
 
   if (typeof value === "number") {
-    return (
-      <span className="text-orange-700 dark:text-amber-400">
-        {String(value)}
-      </span>
-    )
+    return <span className={theme.number}>{String(value)}</span>
   }
 
-  // string
   return (
-    <span className="text-green-700 dark:text-green-400">
+    <span className={theme.string}>
       &quot;{value}&quot;
     </span>
   )
@@ -154,6 +186,7 @@ function CollapsibleNode({
   defaultExpanded,
   isLast,
   indentGuide,
+  theme,
 }: {
   value: JsonObjectType | JsonArrayType
   keyName?: string
@@ -161,6 +194,7 @@ function CollapsibleNode({
   defaultExpanded: boolean
   isLast: boolean
   indentGuide: boolean
+  theme: Required<JsonViewTheme>
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded)
 
@@ -175,13 +209,13 @@ function CollapsibleNode({
   // Empty containers render inline
   if (isEmpty) {
     return (
-      <JsonLine depth={depth} value={value}>
-        {keyName !== undefined && <KeyLabel name={keyName} />}
-        <Bracket>
+      <JsonLine depth={depth} value={value} theme={theme}>
+        {keyName !== undefined && <KeyLabel name={keyName} theme={theme} />}
+        <Bracket theme={theme}>
           {openBracket}
           {closeBracket}
         </Bracket>
-        {!isLast && <Comma />}
+        {!isLast && <Comma theme={theme} />}
       </JsonLine>
     )
   }
@@ -190,7 +224,10 @@ function CollapsibleNode({
     <div>
       {/* Opening line */}
       <div
-        className="group/line flex cursor-pointer items-center gap-1 leading-6"
+        className={cn(
+          "group/line flex cursor-pointer items-center gap-1 rounded-sm rounded-l-none leading-6",
+          theme.lineHover
+        )}
         style={{ paddingLeft: depth * 24 }}
         onClick={() => setExpanded((e) => !e)}
       >
@@ -203,8 +240,8 @@ function CollapsibleNode({
           />
         </span>
         <span>
-          {keyName !== undefined && <KeyLabel name={keyName} />}
-          <Bracket>{openBracket}</Bracket>
+          {keyName !== undefined && <KeyLabel name={keyName} theme={theme} />}
+          <Bracket theme={theme}>{openBracket}</Bracket>
           {!expanded && (
             <span className="ml-1 text-xs text-muted-foreground">
               {isArr
@@ -214,8 +251,8 @@ function CollapsibleNode({
           )}
           {!expanded && (
             <>
-              <Bracket>{closeBracket}</Bracket>
-              {!isLast && <Comma />}
+              <Bracket theme={theme}>{closeBracket}</Bracket>
+              {!isLast && <Comma theme={theme} />}
             </>
           )}
         </span>
@@ -240,6 +277,7 @@ function CollapsibleNode({
               defaultExpanded={defaultExpanded}
               isLast={idx === entries.length - 1}
               indentGuide={indentGuide}
+              theme={theme}
             />
           ))}
         </div>
@@ -249,8 +287,8 @@ function CollapsibleNode({
       {expanded && (
         <div className="leading-6" style={{ paddingLeft: depth * 24 }}>
           <span className="ml-5">
-            <Bracket>{closeBracket}</Bracket>
-            {!isLast && <Comma />}
+            <Bracket theme={theme}>{closeBracket}</Bracket>
+            {!isLast && <Comma theme={theme} />}
           </span>
         </div>
       )}
@@ -265,6 +303,7 @@ function JsonNode({
   defaultExpanded,
   isLast,
   indentGuide,
+  theme,
 }: {
   value: unknown
   keyName?: string
@@ -272,6 +311,7 @@ function JsonNode({
   defaultExpanded: boolean
   isLast: boolean
   indentGuide: boolean
+  theme: Required<JsonViewTheme>
 }) {
   if (isObject(value) || isArray(value)) {
     return (
@@ -282,15 +322,16 @@ function JsonNode({
         defaultExpanded={defaultExpanded}
         isLast={isLast}
         indentGuide={indentGuide}
+        theme={theme}
       />
     )
   }
 
   return (
-    <JsonLine depth={depth} value={value}>
-      {keyName !== undefined && <KeyLabel name={keyName} />}
-      <JsonPrimitiveValue value={value as JsonPrimitive} />
-      {!isLast && <Comma />}
+    <JsonLine depth={depth} value={value} theme={theme}>
+      {keyName !== undefined && <KeyLabel name={keyName} theme={theme} />}
+      <JsonPrimitiveValue value={value as JsonPrimitive} theme={theme} />
+      {!isLast && <Comma theme={theme} />}
     </JsonLine>
   )
 }
@@ -300,21 +341,20 @@ function JsonView({
   className,
   defaultExpanded = true,
   indentGuide = true,
+  theme: themeOverride,
 }: JsonViewProps) {
+  const theme: Required<JsonViewTheme> = { ...defaultTheme, ...themeOverride }
+
   return (
     <TooltipProvider>
-      <div
-        className={cn(
-          "overflow-auto rounded-lg border bg-muted/30 p-4 font-mono text-sm",
-          className
-        )}
-      >
+      <div className={cn("font-mono text-sm", className)}>
         <JsonNode
           value={data}
           depth={0}
           defaultExpanded={defaultExpanded}
           isLast
           indentGuide={indentGuide}
+          theme={theme}
         />
       </div>
     </TooltipProvider>
@@ -322,4 +362,4 @@ function JsonView({
 }
 
 export { JsonView }
-export type { JsonViewProps }
+export type { JsonViewProps, JsonViewTheme }
