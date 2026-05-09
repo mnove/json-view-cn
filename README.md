@@ -7,7 +7,7 @@ A fully-customizable, collapsible, syntax-highlighted JSON tree viewer component
 ## Installation
 
 ```bash
-npx shadcn@latest add json-view
+npx shadcn@latest add https://json-view-cn.vercel.app/r/json-view.json
 ```
 
 ### Dependencies

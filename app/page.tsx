@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Showcase } from "@/components/showcase"
 
-const installCommand = "npx shadcn@latest add json-view"
+const installCommand = "npx shadcn@latest add https://json-view-cn.vercel.app/r/json-view.json"
 
 function CopyInput() {
   const [copied, setCopied] = useState(false)
