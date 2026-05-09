@@ -1,9 +1,14 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { ChevronRight, Copy, Check } from "lucide-react"
+import {
+  Check,
+  ChevronRight,
+  ChevronUp,
+  Copy,
+  MoreHorizontal,
+} from "lucide-react"
+import { useCallback, useState } from "react"
 
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -11,6 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 type JsonPrimitive = string | number | boolean | null
 type JsonValueType = JsonPrimitive | JsonObjectType | JsonArrayType
@@ -41,8 +47,18 @@ interface JsonViewProps {
   data: unknown
   className?: string
   defaultExpanded?: boolean
+  initialDepth?: number
   indentGuide?: boolean
   theme?: JsonViewTheme
+  rootName?: string
+  stringTruncate?: number
+}
+
+interface InternalProps {
+  indentGuide: boolean
+  theme: Required<JsonViewTheme>
+  initialDepth: number
+  stringTruncate: number
 }
 
 function isObject(value: unknown): value is JsonObjectType {
@@ -153,12 +169,69 @@ function KeyLabel({
   )
 }
 
+function TruncatedString({
+  value,
+  truncate,
+  theme,
+}: {
+  value: string
+  truncate: number
+  theme: Required<JsonViewTheme>
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (value.length <= truncate) {
+    return <span className={theme.string}>&quot;{value}&quot;</span>
+  }
+
+  return (
+    <span
+      className={cn(
+        theme.string,
+        "group/truncated inline-flex cursor-pointer items-center"
+      )}
+      onClick={(e) => {
+        e.stopPropagation()
+        setExpanded((prev) => !prev)
+      }}
+    >
+      &quot;
+      {expanded ? (
+        <span>{value}</span>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger render={<span className="cursor-pointer" />}>
+            {value.substring(0, truncate)}&hellip;
+          </TooltipTrigger>
+          <TooltipContent
+            side="bottom"
+            sideOffset={4}
+            className="max-w-xs wrap-break-word"
+          >
+            {value}
+          </TooltipContent>
+        </Tooltip>
+      )}
+      &quot;
+      <span className="ml-1 opacity-0 transition-opacity group-hover/truncated:opacity-100">
+        {expanded ? (
+          <ChevronUp className="size-3 text-muted-foreground" />
+        ) : (
+          <MoreHorizontal className="size-3 text-muted-foreground" />
+        )}
+      </span>
+    </span>
+  )
+}
+
 function JsonPrimitiveValue({
   value,
   theme,
+  stringTruncate,
 }: {
   value: JsonPrimitive
   theme: Required<JsonViewTheme>
+  stringTruncate: number
 }) {
   if (value === null) {
     return <span className={theme.null}>null</span>
@@ -172,32 +245,38 @@ function JsonPrimitiveValue({
     return <span className={theme.number}>{String(value)}</span>
   }
 
-  return (
-    <span className={theme.string}>
-      &quot;{value}&quot;
-    </span>
-  )
+  if (stringTruncate > 0) {
+    return (
+      <TruncatedString value={value} truncate={stringTruncate} theme={theme} />
+    )
+  }
+
+  return <span className={theme.string}>&quot;{value}&quot;</span>
 }
 
 function CollapsibleNode({
   value,
   keyName,
   depth,
-  defaultExpanded,
+  absoluteDepth,
   isLast,
-  indentGuide,
-  theme,
+  internal,
 }: {
   value: JsonObjectType | JsonArrayType
   keyName?: string
   depth: number
-  defaultExpanded: boolean
+  absoluteDepth: number
   isLast: boolean
-  indentGuide: boolean
-  theme: Required<JsonViewTheme>
+  internal: InternalProps
 }) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
+  const shouldExpand =
+    internal.initialDepth === Infinity
+      ? true
+      : absoluteDepth < internal.initialDepth
 
+  const [expanded, setExpanded] = useState(shouldExpand)
+
+  const { theme, indentGuide } = internal
   const isArr = isArray(value)
   const entries = isArr
     ? value.map((v, i) => [i, v] as const)
@@ -274,10 +353,9 @@ function CollapsibleNode({
               value={childValue}
               keyName={isArr ? undefined : String(key)}
               depth={1}
-              defaultExpanded={defaultExpanded}
+              absoluteDepth={absoluteDepth + 1}
               isLast={idx === entries.length - 1}
-              indentGuide={indentGuide}
-              theme={theme}
+              internal={internal}
             />
           ))}
         </div>
@@ -300,18 +378,16 @@ function JsonNode({
   value,
   keyName,
   depth,
-  defaultExpanded,
+  absoluteDepth,
   isLast,
-  indentGuide,
-  theme,
+  internal,
 }: {
   value: unknown
   keyName?: string
   depth: number
-  defaultExpanded: boolean
+  absoluteDepth: number
   isLast: boolean
-  indentGuide: boolean
-  theme: Required<JsonViewTheme>
+  internal: InternalProps
 }) {
   if (isObject(value) || isArray(value)) {
     return (
@@ -319,19 +395,24 @@ function JsonNode({
         value={value}
         keyName={keyName}
         depth={depth}
-        defaultExpanded={defaultExpanded}
+        absoluteDepth={absoluteDepth}
         isLast={isLast}
-        indentGuide={indentGuide}
-        theme={theme}
+        internal={internal}
       />
     )
   }
 
   return (
-    <JsonLine depth={depth} value={value} theme={theme}>
-      {keyName !== undefined && <KeyLabel name={keyName} theme={theme} />}
-      <JsonPrimitiveValue value={value as JsonPrimitive} theme={theme} />
-      {!isLast && <Comma theme={theme} />}
+    <JsonLine depth={depth} value={value} theme={internal.theme}>
+      {keyName !== undefined && (
+        <KeyLabel name={keyName} theme={internal.theme} />
+      )}
+      <JsonPrimitiveValue
+        value={value as JsonPrimitive}
+        theme={internal.theme}
+        stringTruncate={internal.stringTruncate}
+      />
+      {!isLast && <Comma theme={internal.theme} />}
     </JsonLine>
   )
 }
@@ -340,23 +421,38 @@ function JsonView({
   data,
   className,
   defaultExpanded = true,
+  initialDepth,
   indentGuide = true,
   theme: themeOverride,
+  rootName,
+  stringTruncate = 0,
 }: JsonViewProps) {
   const theme: Required<JsonViewTheme> = { ...defaultTheme, ...themeOverride }
 
+  const resolvedInitialDepth =
+    initialDepth !== undefined ? initialDepth : defaultExpanded ? Infinity : 0
+
+  const internal: InternalProps = {
+    indentGuide,
+    theme,
+    initialDepth: resolvedInitialDepth,
+    stringTruncate,
+  }
+
+  const content = (
+    <JsonNode
+      value={data}
+      keyName={rootName}
+      depth={0}
+      absoluteDepth={0}
+      isLast
+      internal={internal}
+    />
+  )
+
   return (
     <TooltipProvider>
-      <div className={cn("font-mono text-sm", className)}>
-        <JsonNode
-          value={data}
-          depth={0}
-          defaultExpanded={defaultExpanded}
-          isLast
-          indentGuide={indentGuide}
-          theme={theme}
-        />
-      </div>
+      <div className={cn("font-mono text-sm", className)}>{content}</div>
     </TooltipProvider>
   )
 }

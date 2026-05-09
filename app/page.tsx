@@ -36,7 +36,6 @@ function CopyInput() {
   )
 }
 
-
 export default function Page() {
   return (
     <div className="flex min-h-svh flex-col items-center">
@@ -45,14 +44,14 @@ export default function Page() {
           <h1 className="text-3xl font-semibold tracking-tighter md:text-5xl">
             JSON Viewer
           </h1>
-          <p className="tracking-normal text-muted-foreground">
-            A fully-customizable, collapsible, syntax-highlighted JSON tree
-            viewer component.
-            <span className="text-foreground">
-              {" "}
-              Ready to be copy-pasted into your project.
-            </span>
-          </p>
+
+          <div>
+            <p className="tracking-normal text-muted-foreground">
+              A fully-customizable, collapsible, syntax-highlighted JSON tree
+              viewer component.
+            </p>
+            <p>Ready to be copy-pasted into your project.</p>
+          </div>
         </div>
 
         <div>

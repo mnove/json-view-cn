@@ -83,6 +83,35 @@ const nestedData = {
   },
 }
 
+const longStringsData = {
+  title: "Short title",
+  description:
+    "This is a very long description that exceeds the truncation limit and should be truncated with an ellipsis and a tooltip showing the full text when hovered. It contains enough characters to demonstrate the string truncation feature effectively.",
+  notes:
+    "Another lengthy field that goes on and on to show how multiple long strings are handled within the same JSON object when truncation is enabled.",
+  tags: ["short", "concise"],
+  count: 42,
+}
+
+const eventLog = {
+  event: "user.signup",
+  timestamp: "2025-03-15T08:30:00Z",
+  user: {
+    id: "usr_abc123",
+    name: "Jane Smith",
+    email: "jane@example.com",
+    profile: {
+      avatar: "https://example.com/avatars/jane.png",
+      bio: "Software engineer passionate about building great developer tools and open source contributions.",
+    },
+  },
+  metadata: {
+    ip: "192.168.1.1",
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    referrer: null,
+  },
+}
+
 export function Showcase() {
   return (
     <div className="columns-1 gap-6 space-y-6 md:columns-2">
@@ -153,6 +182,36 @@ export function Showcase() {
               bracket: "text-stone-600 dark:text-stone-400",
               lineHover: "hover:bg-amber-50 dark:hover:bg-amber-950/20",
             }}
+          />
+        </Container>
+      </div>
+
+      <div className="break-inside-avoid">
+        <Container title="Root name label">
+          <JsonView data={userData} rootName="user" />
+        </Container>
+      </div>
+
+      <div className="break-inside-avoid">
+        <Container title="Expand to depth 1 only">
+          <JsonView data={eventLog} initialDepth={1} />
+        </Container>
+      </div>
+
+      <div className="break-inside-avoid">
+        <Container title="String truncation at 50 chars">
+          <JsonView data={longStringsData} stringTruncate={50} />
+        </Container>
+      </div>
+
+      <div className="break-inside-avoid">
+        <Container title="All features combined">
+          <JsonView
+            data={eventLog}
+            rootName="event"
+            initialDepth={2}
+            stringTruncate={60}
+            indentGuide
           />
         </Container>
       </div>
