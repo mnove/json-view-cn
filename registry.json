@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "json-view-cn",
+  "homepage": "https://json-view-cn.vercel.app",
+  "items": [
+    {
+      "name": "json-view",
+      "type": "registry:ui",
+      "title": "JSON Viewer",
+      "description": "A fully-customizable, collapsible, syntax-highlighted JSON tree viewer component with copy on hover, indent guides, depth-based expansion, string truncation, and theming support.",
+      "registryDependencies": ["button", "tooltip"],
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "registry/json-view/json-view.tsx",
+          "type": "registry:ui",
+          "target": "@ui/json-view.tsx"
+        }
+      ]
+    }
+  ]
+}

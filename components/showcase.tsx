@@ -1,4 +1,4 @@
-import { JsonView } from "@/components/ui/json-view"
+import { JsonView } from "@/registry/json-view/json-view"
 import { Container } from "@/components/container"
 
 const userData = {
