@@ -1,5 +1,7 @@
 # json-view-cn
 
+![json-view-cn](public/cover.png)
+
 A fully-customizable, collapsible, syntax-highlighted JSON tree viewer component for React. Built with [shadcn/ui](https://ui.shadcn.com), [Base UI](https://base-ui.com), and [Tailwind CSS v4](https://tailwindcss.com). Ready to be copy-pasted into your project.
 
 [Live demo](https://json-view-cn.vercel.app/)
