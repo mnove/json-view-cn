@@ -1,8 +1,8 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "json-view",
-  "title": "JSON Viewer",
-  "description": "A fully-customizable, collapsible, syntax-highlighted JSON tree viewer component with copy on hover, indent guides, depth-based expansion, string truncation, and theming support.",
+  "title": "JSON Viewer (Base UI)",
+  "description": "A fully-customizable, collapsible, syntax-highlighted JSON tree viewer component. For projects using Base UI / base-mira style.",
   "dependencies": [
     "lucide-react"
   ],
