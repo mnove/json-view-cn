@@ -129,7 +129,8 @@ function CopyButton({ value }: { value: unknown }) {
             <Button
               variant="ghost"
               size="icon"
-              className="opacity-0 transition-opacity group-hover/line:opacity-100"
+              aria-label={copied ? "Copied" : "Copy value"}
+              className="opacity-0 transition-opacity group-hover/line:opacity-100 group-has-[:focus-visible]/line:opacity-100 focus-visible:opacity-100"
               onClick={handleCopy}
             />
           }
@@ -269,13 +270,22 @@ function TruncatedString({
         </Tooltip>
       )}
       &quot;
-      <span className="ml-1 inline-flex align-middle opacity-0 transition-opacity group-hover/truncated:opacity-100">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-label={expanded ? "Collapse string" : "Expand string"}
+        className="ml-1 inline-flex cursor-pointer rounded-sm align-middle opacity-0 transition-opacity outline-none group-hover/truncated:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+        onClick={(e) => {
+          e.stopPropagation()
+          setExpanded((prev) => !prev)
+        }}
+      >
         {expanded ? (
           <ChevronUp className="size-3 text-muted-foreground" />
         ) : (
           <MoreHorizontal className="size-3 text-muted-foreground" />
         )}
-      </span>
+      </button>
     </span>
   )
 }
@@ -389,37 +399,43 @@ function CollapsibleNode({
       {/* Opening line */}
       <div
         className={cn(
-          "group/line flex cursor-pointer items-center gap-1 rounded-sm rounded-l-none leading-6",
+          "group/line flex items-center gap-1 rounded-sm rounded-l-none leading-6",
           theme.lineHover
         )}
         style={{ paddingLeft: depth * 24 }}
-        onClick={() => setExpanded((e) => !e)}
       >
-        <span className="mr-1 inline-flex shrink-0 items-center justify-center p-0.5 text-muted-foreground">
-          <ChevronRight
-            className={cn(
-              "size-3.5 transition-transform duration-150",
-              expanded && "rotate-90"
+        <button
+          type="button"
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 cursor-pointer items-center rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          onClick={() => setExpanded((e) => !e)}
+        >
+          <span className="mr-1 inline-flex shrink-0 items-center justify-center p-0.5 text-muted-foreground">
+            <ChevronRight
+              className={cn(
+                "size-3.5 transition-transform duration-150",
+                expanded && "rotate-90"
+              )}
+            />
+          </span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">
+            {keyName !== undefined && <KeyLabel name={keyName} theme={theme} />}
+            <Bracket theme={theme}>{openBracket}</Bracket>
+            {!expanded && (
+              <span className="ml-1 text-xs text-muted-foreground">
+                {isArr
+                  ? `\u2026${entries.length} items`
+                  : `\u2026${entries.length} keys`}
+              </span>
             )}
-          />
-        </span>
-        <span className="min-w-0 [overflow-wrap:anywhere]">
-          {keyName !== undefined && <KeyLabel name={keyName} theme={theme} />}
-          <Bracket theme={theme}>{openBracket}</Bracket>
-          {!expanded && (
-            <span className="ml-1 text-xs text-muted-foreground">
-              {isArr
-                ? `\u2026${entries.length} items`
-                : `\u2026${entries.length} keys`}
-            </span>
-          )}
-          {!expanded && (
-            <>
-              <Bracket theme={theme}>{closeBracket}</Bracket>
-              {!isLast && <Comma theme={theme} />}
-            </>
-          )}
-        </span>
+            {!expanded && (
+              <>
+                <Bracket theme={theme}>{closeBracket}</Bracket>
+                {!isLast && <Comma theme={theme} />}
+              </>
+            )}
+          </span>
+        </button>
         <CopyButton value={value} />
       </div>
 

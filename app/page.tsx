@@ -43,6 +43,7 @@ function CopyInput() {
       <Button
         variant="ghost"
         size="icon"
+        aria-label={copied ? "Copied" : "Copy install command"}
         className="shrink-0 rounded-l-none border-l"
         onClick={handleCopy}
       >
