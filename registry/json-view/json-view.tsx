@@ -229,12 +229,16 @@ function JsonPrimitiveValue({
   theme,
   stringTruncate,
 }: {
-  value: JsonPrimitive
+  value: unknown
   theme: Required<JsonViewTheme>
   stringTruncate: number
 }) {
   if (value === null) {
     return <span className={theme.null}>null</span>
+  }
+
+  if (value === undefined) {
+    return <span className={theme.null}>undefined</span>
   }
 
   if (typeof value === "boolean") {
@@ -245,13 +249,23 @@ function JsonPrimitiveValue({
     return <span className={theme.number}>{String(value)}</span>
   }
 
-  if (stringTruncate > 0) {
-    return (
-      <TruncatedString value={value} truncate={stringTruncate} theme={theme} />
-    )
+  if (typeof value === "string") {
+    if (stringTruncate > 0) {
+      return (
+        <TruncatedString
+          value={value}
+          truncate={stringTruncate}
+          theme={theme}
+        />
+      )
+    }
+
+    return <span className={theme.string}>&quot;{value}&quot;</span>
   }
 
-  return <span className={theme.string}>&quot;{value}&quot;</span>
+  // Non-JSON primitives (bigint, symbol, function): render without quotes
+  // so they are not mistaken for strings.
+  return <span className={theme.null}>{String(value)}</span>
 }
 
 function CollapsibleNode({
@@ -408,7 +422,7 @@ function JsonNode({
         <KeyLabel name={keyName} theme={internal.theme} />
       )}
       <JsonPrimitiveValue
-        value={value as JsonPrimitive}
+        value={value}
         theme={internal.theme}
         stringTruncate={internal.stringTruncate}
       />
