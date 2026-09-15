@@ -17,21 +17,6 @@
           "target": "@ui/json-view.tsx"
         }
       ]
-    },
-    {
-      "name": "json-view-radix",
-      "type": "registry:ui",
-      "title": "JSON Viewer (Radix)",
-      "description": "A fully-customizable, collapsible, syntax-highlighted JSON tree viewer component. For projects using Radix UI / default or new-york style.",
-      "registryDependencies": ["button", "tooltip"],
-      "dependencies": ["lucide-react"],
-      "files": [
-        {
-          "path": "registry/json-view-radix/json-view.tsx",
-          "type": "registry:ui",
-          "target": "@ui/json-view.tsx"
-        }
-      ]
     }
   ]
 }
