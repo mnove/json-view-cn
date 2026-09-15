@@ -107,9 +107,37 @@ const eventLog = {
   },
   metadata: {
     ip: "192.168.1.1",
-    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     referrer: null,
   },
+}
+
+const circular: Record<string, unknown> = { name: "loop" }
+circular.self = circular
+
+const edgeCases = {
+  date: new Date("2025-03-15T08:30:00Z"),
+  map: new Map([
+    ["a", 1],
+    ["b", 2],
+  ]),
+  set: new Set(["x", "y"]),
+  bigint: BigInt("9007199254740993"),
+  fn: function greet() {},
+  circular,
+  quotes: 'say "hi" to <b>them</b>',
+  newline: "line1\nline2",
+  spaces: "a     b",
+  backslash: "C:\\temp\\file.txt",
+  unicode: "héllo wörld 🚀",
+  'key"with"quotes': "escaped key",
+  url: "https://example.com/a/very/long/path/that/has/no/spaces/at/all/and/keeps/going/and/going/and/going/forever/and/ever",
+  undefinedValue: undefined,
+  numbers: [-0.5, 1e21, 1234567890123],
+  emptyObject: {},
+  emptyArray: [],
+  nested: { empty: { deeper: {} } },
 }
 
 export function Showcase() {
@@ -201,6 +229,12 @@ export function Showcase() {
       <div className="break-inside-avoid">
         <Container title="String truncation at 50 chars">
           <JsonView data={longStringsData} stringTruncate={50} />
+        </Container>
+      </div>
+
+      <div className="break-inside-avoid">
+        <Container title="Edge cases — escaping, wrapping, undefined">
+          <JsonView data={edgeCases} stringTruncate={60} />
         </Container>
       </div>
 

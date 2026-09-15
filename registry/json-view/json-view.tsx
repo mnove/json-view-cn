@@ -69,9 +69,45 @@ function isArray(value: unknown): value is JsonArrayType {
   return Array.isArray(value)
 }
 
+// Resolve values that are not plain JSON into the closest JSON-like shape,
+// mirroring what JSON.stringify would do where it is defined: objects with
+// toJSON (Date, custom classes) use it, Map becomes an object, Set an array.
+function resolveValue(value: unknown): unknown {
+  if (value === null || typeof value !== "object") return value
+  if (typeof (value as { toJSON?: unknown }).toJSON === "function") {
+    return (value as { toJSON: () => unknown }).toJSON()
+  }
+  if (value instanceof Map) {
+    return Object.fromEntries(Array.from(value, ([k, v]) => [String(k), v]))
+  }
+  if (value instanceof Set) return Array.from(value)
+  return value
+}
+
 function stringifyValue(value: unknown): string {
   if (typeof value === "string") return value
-  return JSON.stringify(value, null, 2)
+  // Track the ancestor chain so circular references become "[Circular]"
+  // instead of throwing. `this` inside the replacer is the parent object.
+  const ancestors: unknown[] = []
+  return JSON.stringify(
+    value,
+    function (this: unknown, _key, val) {
+      while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
+        ancestors.pop()
+      }
+      const resolved = resolveValue(val)
+      if (typeof resolved === "bigint") {
+        const asNumber = Number(resolved)
+        return Number.isSafeInteger(asNumber) ? asNumber : resolved.toString()
+      }
+      if (resolved !== null && typeof resolved === "object") {
+        if (ancestors.includes(resolved)) return "[Circular]"
+        ancestors.push(resolved)
+      }
+      return resolved
+    },
+    2
+  )
 }
 
 function CopyButton({ value }: { value: unknown }) {
@@ -93,7 +129,8 @@ function CopyButton({ value }: { value: unknown }) {
             <Button
               variant="ghost"
               size="icon"
-              className="opacity-0 transition-opacity group-hover/line:opacity-100"
+              aria-label={copied ? "Copied" : "Copy value"}
+              className="opacity-0 transition-opacity group-hover/line:opacity-100 group-has-[:focus-visible]/line:opacity-100 focus-visible:opacity-100"
               onClick={handleCopy}
             />
           }
@@ -134,7 +171,7 @@ function JsonLine({
       )}
       style={{ paddingLeft: depth * 24 }}
     >
-      <span className="min-w-0">{children}</span>
+      <span className="min-w-0 [overflow-wrap:anywhere]">{children}</span>
       <CopyButton value={value} />
     </div>
   )
@@ -154,6 +191,12 @@ function Comma({ theme }: { theme: Required<JsonViewTheme> }) {
   return <span className={theme.bracket}>,</span>
 }
 
+// Escape a string the way JSON.stringify would, without the surrounding quotes,
+// so embedded quotes, backslashes, and control characters display faithfully.
+function escapeString(value: string): string {
+  return JSON.stringify(value).slice(1, -1)
+}
+
 function KeyLabel({
   name,
   theme,
@@ -162,9 +205,23 @@ function KeyLabel({
   theme: Required<JsonViewTheme>
 }) {
   return (
-    <span className={theme.key}>
-      &quot;{name}&quot;
+    <span className={cn("whitespace-pre-wrap", theme.key)}>
+      &quot;{escapeString(name)}&quot;
       <span className={theme.bracket}>: </span>
+    </span>
+  )
+}
+
+function StringValue({
+  value,
+  theme,
+}: {
+  value: string
+  theme: Required<JsonViewTheme>
+}) {
+  return (
+    <span className={cn("whitespace-pre-wrap", theme.string)}>
+      &quot;{escapeString(value)}&quot;
     </span>
   )
 }
@@ -181,14 +238,14 @@ function TruncatedString({
   const [expanded, setExpanded] = useState(false)
 
   if (value.length <= truncate) {
-    return <span className={theme.string}>&quot;{value}&quot;</span>
+    return <StringValue value={value} theme={theme} />
   }
 
   return (
     <span
       className={cn(
-        theme.string,
-        "group/truncated inline-flex cursor-pointer items-center"
+        "group/truncated cursor-pointer whitespace-pre-wrap",
+        theme.string
       )}
       onClick={(e) => {
         e.stopPropagation()
@@ -197,29 +254,38 @@ function TruncatedString({
     >
       &quot;
       {expanded ? (
-        <span>{value}</span>
+        escapeString(value)
       ) : (
         <Tooltip>
-          <TooltipTrigger render={<span className="cursor-pointer" />}>
-            {value.substring(0, truncate)}&hellip;
+          <TooltipTrigger render={<span />}>
+            {escapeString(value.substring(0, truncate))}&hellip;
           </TooltipTrigger>
           <TooltipContent
             side="bottom"
             sideOffset={4}
-            className="max-w-xs wrap-break-word"
+            className="max-w-xs wrap-break-word whitespace-pre-wrap"
           >
             {value}
           </TooltipContent>
         </Tooltip>
       )}
       &quot;
-      <span className="ml-1 opacity-0 transition-opacity group-hover/truncated:opacity-100">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-label={expanded ? "Collapse string" : "Expand string"}
+        className="ml-1 inline-flex cursor-pointer rounded-sm align-middle opacity-0 transition-opacity outline-none group-hover/truncated:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+        onClick={(e) => {
+          e.stopPropagation()
+          setExpanded((prev) => !prev)
+        }}
+      >
         {expanded ? (
           <ChevronUp className="size-3 text-muted-foreground" />
         ) : (
           <MoreHorizontal className="size-3 text-muted-foreground" />
         )}
-      </span>
+      </button>
     </span>
   )
 }
@@ -229,12 +295,16 @@ function JsonPrimitiveValue({
   theme,
   stringTruncate,
 }: {
-  value: JsonPrimitive
+  value: unknown
   theme: Required<JsonViewTheme>
   stringTruncate: number
 }) {
   if (value === null) {
     return <span className={theme.null}>null</span>
+  }
+
+  if (value === undefined) {
+    return <span className={theme.null}>undefined</span>
   }
 
   if (typeof value === "boolean") {
@@ -245,13 +315,35 @@ function JsonPrimitiveValue({
     return <span className={theme.number}>{String(value)}</span>
   }
 
-  if (stringTruncate > 0) {
+  if (typeof value === "string") {
+    if (stringTruncate > 0) {
+      return (
+        <TruncatedString
+          value={value}
+          truncate={stringTruncate}
+          theme={theme}
+        />
+      )
+    }
+
+    return <StringValue value={value} theme={theme} />
+  }
+
+  if (typeof value === "bigint") {
+    return <span className={theme.number}>{value.toString()}</span>
+  }
+
+  if (typeof value === "function") {
     return (
-      <TruncatedString value={value} truncate={stringTruncate} theme={theme} />
+      <span className={theme.null}>
+        [Function{value.name ? `: ${value.name}` : ""}]
+      </span>
     )
   }
 
-  return <span className={theme.string}>&quot;{value}&quot;</span>
+  // Remaining non-JSON primitives (symbol): render without quotes so they
+  // are not mistaken for strings.
+  return <span className={theme.null}>{String(value)}</span>
 }
 
 function CollapsibleNode({
@@ -261,6 +353,7 @@ function CollapsibleNode({
   absoluteDepth,
   isLast,
   internal,
+  ancestors,
 }: {
   value: JsonObjectType | JsonArrayType
   keyName?: string
@@ -268,6 +361,7 @@ function CollapsibleNode({
   absoluteDepth: number
   isLast: boolean
   internal: InternalProps
+  ancestors: readonly object[]
 }) {
   const shouldExpand =
     internal.initialDepth === Infinity
@@ -284,6 +378,7 @@ function CollapsibleNode({
   const openBracket = isArr ? "[" : "{"
   const closeBracket = isArr ? "]" : "}"
   const isEmpty = entries.length === 0
+  const childAncestors = [...ancestors, value]
 
   // Empty containers render inline
   if (isEmpty) {
@@ -304,37 +399,43 @@ function CollapsibleNode({
       {/* Opening line */}
       <div
         className={cn(
-          "group/line flex cursor-pointer items-center gap-1 rounded-sm rounded-l-none leading-6",
+          "group/line flex items-center gap-1 rounded-sm rounded-l-none leading-6",
           theme.lineHover
         )}
         style={{ paddingLeft: depth * 24 }}
-        onClick={() => setExpanded((e) => !e)}
       >
-        <span className="mr-1 inline-flex shrink-0 items-center justify-center p-0.5 text-muted-foreground">
-          <ChevronRight
-            className={cn(
-              "size-3.5 transition-transform duration-150",
-              expanded && "rotate-90"
+        <button
+          type="button"
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 cursor-pointer items-center rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          onClick={() => setExpanded((e) => !e)}
+        >
+          <span className="mr-1 inline-flex shrink-0 items-center justify-center p-0.5 text-muted-foreground">
+            <ChevronRight
+              className={cn(
+                "size-3.5 transition-transform duration-150",
+                expanded && "rotate-90"
+              )}
+            />
+          </span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">
+            {keyName !== undefined && <KeyLabel name={keyName} theme={theme} />}
+            <Bracket theme={theme}>{openBracket}</Bracket>
+            {!expanded && (
+              <span className="ml-1 text-xs text-muted-foreground">
+                {isArr
+                  ? `\u2026${entries.length} items`
+                  : `\u2026${entries.length} keys`}
+              </span>
             )}
-          />
-        </span>
-        <span>
-          {keyName !== undefined && <KeyLabel name={keyName} theme={theme} />}
-          <Bracket theme={theme}>{openBracket}</Bracket>
-          {!expanded && (
-            <span className="ml-1 text-xs text-muted-foreground">
-              {isArr
-                ? `\u2026${entries.length} items`
-                : `\u2026${entries.length} keys`}
-            </span>
-          )}
-          {!expanded && (
-            <>
-              <Bracket theme={theme}>{closeBracket}</Bracket>
-              {!isLast && <Comma theme={theme} />}
-            </>
-          )}
-        </span>
+            {!expanded && (
+              <>
+                <Bracket theme={theme}>{closeBracket}</Bracket>
+                {!isLast && <Comma theme={theme} />}
+              </>
+            )}
+          </span>
+        </button>
         <CopyButton value={value} />
       </div>
 
@@ -356,6 +457,7 @@ function CollapsibleNode({
               absoluteDepth={absoluteDepth + 1}
               isLast={idx === entries.length - 1}
               internal={internal}
+              ancestors={childAncestors}
             />
           ))}
         </div>
@@ -375,12 +477,13 @@ function CollapsibleNode({
 }
 
 function JsonNode({
-  value,
+  value: rawValue,
   keyName,
   depth,
   absoluteDepth,
   isLast,
   internal,
+  ancestors,
 }: {
   value: unknown
   keyName?: string
@@ -388,8 +491,23 @@ function JsonNode({
   absoluteDepth: number
   isLast: boolean
   internal: InternalProps
+  ancestors: readonly object[]
 }) {
+  const value = resolveValue(rawValue)
+
   if (isObject(value) || isArray(value)) {
+    if (ancestors.includes(value)) {
+      return (
+        <JsonLine depth={depth} value={value} theme={internal.theme}>
+          {keyName !== undefined && (
+            <KeyLabel name={keyName} theme={internal.theme} />
+          )}
+          <span className={internal.theme.null}>[Circular]</span>
+          {!isLast && <Comma theme={internal.theme} />}
+        </JsonLine>
+      )
+    }
+
     return (
       <CollapsibleNode
         value={value}
@@ -398,6 +516,7 @@ function JsonNode({
         absoluteDepth={absoluteDepth}
         isLast={isLast}
         internal={internal}
+        ancestors={ancestors}
       />
     )
   }
@@ -408,7 +527,7 @@ function JsonNode({
         <KeyLabel name={keyName} theme={internal.theme} />
       )}
       <JsonPrimitiveValue
-        value={value as JsonPrimitive}
+        value={value}
         theme={internal.theme}
         stringTruncate={internal.stringTruncate}
       />
@@ -447,6 +566,7 @@ function JsonView({
       absoluteDepth={0}
       isLast
       internal={internal}
+      ancestors={[]}
     />
   )
 
