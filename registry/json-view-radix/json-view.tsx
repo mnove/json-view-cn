@@ -69,9 +69,45 @@ function isArray(value: unknown): value is JsonArrayType {
   return Array.isArray(value)
 }
 
+// Resolve values that are not plain JSON into the closest JSON-like shape,
+// mirroring what JSON.stringify would do where it is defined: objects with
+// toJSON (Date, custom classes) use it, Map becomes an object, Set an array.
+function resolveValue(value: unknown): unknown {
+  if (value === null || typeof value !== "object") return value
+  if (typeof (value as { toJSON?: unknown }).toJSON === "function") {
+    return (value as { toJSON: () => unknown }).toJSON()
+  }
+  if (value instanceof Map) {
+    return Object.fromEntries(Array.from(value, ([k, v]) => [String(k), v]))
+  }
+  if (value instanceof Set) return Array.from(value)
+  return value
+}
+
 function stringifyValue(value: unknown): string {
   if (typeof value === "string") return value
-  return JSON.stringify(value, null, 2)
+  // Track the ancestor chain so circular references become "[Circular]"
+  // instead of throwing. `this` inside the replacer is the parent object.
+  const ancestors: unknown[] = []
+  return JSON.stringify(
+    value,
+    function (this: unknown, _key, val) {
+      while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
+        ancestors.pop()
+      }
+      const resolved = resolveValue(val)
+      if (typeof resolved === "bigint") {
+        const asNumber = Number(resolved)
+        return Number.isSafeInteger(asNumber) ? asNumber : resolved.toString()
+      }
+      if (resolved !== null && typeof resolved === "object") {
+        if (ancestors.includes(resolved)) return "[Circular]"
+        ancestors.push(resolved)
+      }
+      return resolved
+    },
+    2
+  )
 }
 
 function CopyButton({ value }: { value: unknown }) {
@@ -281,8 +317,20 @@ function JsonPrimitiveValue({
     return <StringValue value={value} theme={theme} />
   }
 
-  // Non-JSON primitives (bigint, symbol, function): render without quotes
-  // so they are not mistaken for strings.
+  if (typeof value === "bigint") {
+    return <span className={theme.number}>{value.toString()}</span>
+  }
+
+  if (typeof value === "function") {
+    return (
+      <span className={theme.null}>
+        [Function{value.name ? `: ${value.name}` : ""}]
+      </span>
+    )
+  }
+
+  // Remaining non-JSON primitives (symbol): render without quotes so they
+  // are not mistaken for strings.
   return <span className={theme.null}>{String(value)}</span>
 }
 
@@ -293,6 +341,7 @@ function CollapsibleNode({
   absoluteDepth,
   isLast,
   internal,
+  ancestors,
 }: {
   value: JsonObjectType | JsonArrayType
   keyName?: string
@@ -300,6 +349,7 @@ function CollapsibleNode({
   absoluteDepth: number
   isLast: boolean
   internal: InternalProps
+  ancestors: readonly object[]
 }) {
   const shouldExpand =
     internal.initialDepth === Infinity
@@ -316,6 +366,7 @@ function CollapsibleNode({
   const openBracket = isArr ? "[" : "{"
   const closeBracket = isArr ? "]" : "}"
   const isEmpty = entries.length === 0
+  const childAncestors = [...ancestors, value]
 
   // Empty containers render inline
   if (isEmpty) {
@@ -388,6 +439,7 @@ function CollapsibleNode({
               absoluteDepth={absoluteDepth + 1}
               isLast={idx === entries.length - 1}
               internal={internal}
+              ancestors={childAncestors}
             />
           ))}
         </div>
@@ -407,12 +459,13 @@ function CollapsibleNode({
 }
 
 function JsonNode({
-  value,
+  value: rawValue,
   keyName,
   depth,
   absoluteDepth,
   isLast,
   internal,
+  ancestors,
 }: {
   value: unknown
   keyName?: string
@@ -420,8 +473,23 @@ function JsonNode({
   absoluteDepth: number
   isLast: boolean
   internal: InternalProps
+  ancestors: readonly object[]
 }) {
+  const value = resolveValue(rawValue)
+
   if (isObject(value) || isArray(value)) {
+    if (ancestors.includes(value)) {
+      return (
+        <JsonLine depth={depth} value={value} theme={internal.theme}>
+          {keyName !== undefined && (
+            <KeyLabel name={keyName} theme={internal.theme} />
+          )}
+          <span className={internal.theme.null}>[Circular]</span>
+          {!isLast && <Comma theme={internal.theme} />}
+        </JsonLine>
+      )
+    }
+
     return (
       <CollapsibleNode
         value={value}
@@ -430,6 +498,7 @@ function JsonNode({
         absoluteDepth={absoluteDepth}
         isLast={isLast}
         internal={internal}
+        ancestors={ancestors}
       />
     )
   }
@@ -479,6 +548,7 @@ function JsonView({
       absoluteDepth={0}
       isLast
       internal={internal}
+      ancestors={[]}
     />
   )
 

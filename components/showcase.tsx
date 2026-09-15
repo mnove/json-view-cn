@@ -113,7 +113,19 @@ const eventLog = {
   },
 }
 
+const circular: Record<string, unknown> = { name: "loop" }
+circular.self = circular
+
 const edgeCases = {
+  date: new Date("2025-03-15T08:30:00Z"),
+  map: new Map([
+    ["a", 1],
+    ["b", 2],
+  ]),
+  set: new Set(["x", "y"]),
+  bigint: BigInt("9007199254740993"),
+  fn: function greet() {},
+  circular,
   quotes: 'say "hi" to <b>them</b>',
   newline: "line1\nline2",
   spaces: "a     b",
