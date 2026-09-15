@@ -113,6 +113,21 @@ const eventLog = {
   },
 }
 
+const edgeCases = {
+  quotes: 'say "hi" to <b>them</b>',
+  newline: "line1\nline2",
+  spaces: "a     b",
+  backslash: "C:\\temp\\file.txt",
+  unicode: "héllo wörld 🚀",
+  'key"with"quotes': "escaped key",
+  url: "https://example.com/a/very/long/path/that/has/no/spaces/at/all/and/keeps/going/and/going/and/going/forever/and/ever",
+  undefinedValue: undefined,
+  numbers: [-0.5, 1e21, 1234567890123],
+  emptyObject: {},
+  emptyArray: [],
+  nested: { empty: { deeper: {} } },
+}
+
 export function Showcase() {
   return (
     <div className="columns-1 gap-6 space-y-6 md:columns-2">
@@ -202,6 +217,12 @@ export function Showcase() {
       <div className="break-inside-avoid">
         <Container title="String truncation at 50 chars">
           <JsonView data={longStringsData} stringTruncate={50} />
+        </Container>
+      </div>
+
+      <div className="break-inside-avoid">
+        <Container title="Edge cases — escaping, wrapping, undefined">
+          <JsonView data={edgeCases} stringTruncate={60} />
         </Container>
       </div>
 

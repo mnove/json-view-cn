@@ -134,7 +134,7 @@ function JsonLine({
       )}
       style={{ paddingLeft: depth * 24 }}
     >
-      <span className="min-w-0">{children}</span>
+      <span className="min-w-0 [overflow-wrap:anywhere]">{children}</span>
       <CopyButton value={value} />
     </div>
   )
@@ -154,6 +154,12 @@ function Comma({ theme }: { theme: Required<JsonViewTheme> }) {
   return <span className={theme.bracket}>,</span>
 }
 
+// Escape a string the way JSON.stringify would, without the surrounding quotes,
+// so embedded quotes, backslashes, and control characters display faithfully.
+function escapeString(value: string): string {
+  return JSON.stringify(value).slice(1, -1)
+}
+
 function KeyLabel({
   name,
   theme,
@@ -162,9 +168,23 @@ function KeyLabel({
   theme: Required<JsonViewTheme>
 }) {
   return (
-    <span className={theme.key}>
-      &quot;{name}&quot;
+    <span className={cn("whitespace-pre-wrap", theme.key)}>
+      &quot;{escapeString(name)}&quot;
       <span className={theme.bracket}>: </span>
+    </span>
+  )
+}
+
+function StringValue({
+  value,
+  theme,
+}: {
+  value: string
+  theme: Required<JsonViewTheme>
+}) {
+  return (
+    <span className={cn("whitespace-pre-wrap", theme.string)}>
+      &quot;{escapeString(value)}&quot;
     </span>
   )
 }
@@ -181,14 +201,14 @@ function TruncatedString({
   const [expanded, setExpanded] = useState(false)
 
   if (value.length <= truncate) {
-    return <span className={theme.string}>&quot;{value}&quot;</span>
+    return <StringValue value={value} theme={theme} />
   }
 
   return (
     <span
       className={cn(
-        theme.string,
-        "group/truncated inline-flex cursor-pointer items-center"
+        "group/truncated cursor-pointer whitespace-pre-wrap",
+        theme.string
       )}
       onClick={(e) => {
         e.stopPropagation()
@@ -197,23 +217,23 @@ function TruncatedString({
     >
       &quot;
       {expanded ? (
-        <span>{value}</span>
+        escapeString(value)
       ) : (
         <Tooltip>
-          <TooltipTrigger render={<span className="cursor-pointer" />}>
-            {value.substring(0, truncate)}&hellip;
+          <TooltipTrigger render={<span />}>
+            {escapeString(value.substring(0, truncate))}&hellip;
           </TooltipTrigger>
           <TooltipContent
             side="bottom"
             sideOffset={4}
-            className="max-w-xs wrap-break-word"
+            className="max-w-xs wrap-break-word whitespace-pre-wrap"
           >
             {value}
           </TooltipContent>
         </Tooltip>
       )}
       &quot;
-      <span className="ml-1 opacity-0 transition-opacity group-hover/truncated:opacity-100">
+      <span className="ml-1 inline-flex align-middle opacity-0 transition-opacity group-hover/truncated:opacity-100">
         {expanded ? (
           <ChevronUp className="size-3 text-muted-foreground" />
         ) : (
@@ -260,7 +280,7 @@ function JsonPrimitiveValue({
       )
     }
 
-    return <span className={theme.string}>&quot;{value}&quot;</span>
+    return <StringValue value={value} theme={theme} />
   }
 
   // Non-JSON primitives (bigint, symbol, function): render without quotes
@@ -332,7 +352,7 @@ function CollapsibleNode({
             )}
           />
         </span>
-        <span>
+        <span className="min-w-0 [overflow-wrap:anywhere]">
           {keyName !== undefined && <KeyLabel name={keyName} theme={theme} />}
           <Bracket theme={theme}>{openBracket}</Bracket>
           {!expanded && (
