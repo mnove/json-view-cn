@@ -1,17 +1,21 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/logo"
 import { ModeToggle } from "@/components/mode-toggle"
 
 export function Header() {
   return (
     <header className="sticky top-0 z-20 w-full border-b border-border/80 bg-background/95 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-4 md:px-12">
-        <div>
-          <p className="text-sm font-semibold">JSON Viewer</p>
-          <p className="text-xs text-muted-foreground">
-            Explore collapsible JSON with copy support
-          </p>
+        <div className="flex items-center gap-3">
+          <Logo className="size-6 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">JSON Viewer</p>
+            <p className="text-xs text-muted-foreground">
+              Explore collapsible JSON with copy support
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
