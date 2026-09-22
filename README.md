@@ -12,6 +12,12 @@ A fully-customizable, collapsible, syntax-highlighted JSON tree viewer component
 npx shadcn@latest add https://json-view-cn.vercel.app/r/json-view.json
 ```
 
+Or, if the `@json-view-cn` namespace is configured (see [Registry](#registry)):
+
+```bash
+npx shadcn@latest add @json-view-cn/json-view
+```
+
 The component is added to your `ui` alias (e.g. `components/ui/json-view.tsx`).
 
 > **Note:** The component targets shadcn/ui projects that use **Base UI** primitives (e.g. the `base-mira` style). It relies on the Base UI `render` prop of `TooltipTrigger`, so projects using the Radix-based shadcn/ui components will need to adapt the tooltip usage (e.g. to `asChild`).
@@ -200,6 +206,37 @@ The demo site and registry are built with:
 - [Tailwind CSS v4](https://tailwindcss.com)
 - [shadcn/ui v4](https://ui.shadcn.com) with [Base UI](https://base-ui.com) primitives
 - [TypeScript](https://www.typescriptlang.org)
+
+## Registry
+
+This repo is a [shadcn registry](https://ui.shadcn.com/docs/registry). It is flat
+and served from `https://json-view-cn.vercel.app/r/`:
+
+| URL | Contents |
+| --- | --- |
+| [`/r/registry.json`](https://json-view-cn.vercel.app/r/registry.json) | The registry index (no `content` fields) |
+| [`/r/json-view.json`](https://json-view-cn.vercel.app/r/json-view.json) | The `json-view` registry item |
+
+Both files are generated from the root `registry.json` by `pnpm registry:build` and
+committed under `public/r`.
+
+### Using the namespace
+
+Add the registry to your project's `components.json`:
+
+```json
+{
+  "registries": {
+    "@json-view-cn": "https://json-view-cn.vercel.app/r/{name}.json"
+  }
+}
+```
+
+Then install items by name:
+
+```bash
+npx shadcn@latest add @json-view-cn/json-view
+```
 
 ## Development
 
