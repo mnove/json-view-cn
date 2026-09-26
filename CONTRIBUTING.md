@@ -27,7 +27,7 @@ The demo site runs at http://localhost:3000.
 
 1. Create a branch from `main`.
 2. Make your change in `registry/json-view/json-view.tsx`.
-3. If it adds or changes behavior, add or update an example in `components/showcase.tsx`.
+3. If it adds or changes behavior, add or update an example in `components/showcase.tsx` and cover it in `registry/json-view/json-view.test.tsx`.
 4. If it changes the public API (props, theme, supported values), update `README.md`.
 5. Rebuild the registry and commit the generated files:
 
@@ -40,6 +40,7 @@ The demo site runs at http://localhost:3000.
    ```bash
    pnpm lint
    pnpm typecheck
+   pnpm test
    pnpm format
    ```
 
